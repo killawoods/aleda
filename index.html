@@ -12,7 +12,6 @@
     align-items: center;
     height: 100vh;
   }
-
   .container {
     background: white;
     padding: 40px;
@@ -22,12 +21,10 @@
     max-width: 600px;
     text-align: center;
   }
-
   h2 {
     margin-bottom: 20px;
     color: #333;
   }
-
   textarea, input {
     width: 100%;
     padding: 12px;
@@ -38,7 +35,6 @@
     font-size: 16px;
     resize: none;
   }
-
   button {
     background-color: #4f46e5;
     color: white;
@@ -50,11 +46,9 @@
     cursor: pointer;
     transition: background 0.3s;
   }
-
   button:hover {
     background-color: #4338ca;
   }
-
   .footer {
     margin-top: 30px;
     font-size: 14px;
@@ -64,7 +58,7 @@
 </head>
 <body>
 
-<div class="container">
+<div class="container" id="mainContainer" style="display:none;">
   <h2>🔐 Шифратор текста</h2>
 
   <label>Текст для шифрования / расшифровки:</label>
@@ -84,78 +78,103 @@
   <div class="footer">by woods</div>
 </div>
 
+<div id="loginContainer" style="text-align:center;">
+  <h2>Введите секретное слово для доступа</h2>
+  <input type="password" id="loginPassword" placeholder="Пароль" style="padding:10px; font-size:16px; border-radius:8px; border:1px solid #ccc;"/>
+  <br/>
+  <button onclick="checkPassword()" style="margin-top:15px; padding:10px 20px; font-size:16px;">Войти</button>
+  <div id="loginMessage" style="color:red; margin-top:10px;"></div>
+</div>
+
 <script>
-    const realPassword = "магнолия";
+  const salt = "random_salt_12345";
+  const storedHash = "2f7bd8f4e0244e8f9f5dba5a36071a42ecaa2285de24281e40c6c57d2a6a2129";
 
-  let input = prompt("Введите секретное слово:");
-  if (input !== realPassword) {
-    document.body.innerHTML = "<h1>⛔ Доступ запрещён</h1>";
-    throw new Error("Wrong password");
+  async function sha256(str) {
+    const buffer = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
-function stringToBytes(str) {
-  return new TextEncoder().encode(str);
-}
 
-function bytesToString(bytes) {
-  return new TextDecoder().decode(bytes);
-}
+  async function checkPassword() {
+    const input = document.getElementById('loginPassword').value;
+    if (!input) return;
 
-function xorBytes(data, keyBytes) {
-  let result = new Uint8Array(data.length);
-  for (let i = 0; i < data.length; i++) {
-    result[i] = data[i] ^ keyBytes[i % keyBytes.length];
+    const hash = await sha256(input + salt);
+    if (hash === storedHash) {
+      document.getElementById('loginContainer').style.display = 'none';
+      document.getElementById('mainContainer').style.display = 'block';
+    } else {
+      document.getElementById('loginMessage').textContent = "Неверный пароль!";
+    }
   }
-  return result;
-}
 
-function bytesToBase64(bytes) {
-  let binary = '';
-  for (let b of bytes) {
-    binary += String.fromCharCode(b);
+  function stringToBytes(str) {
+    return new TextEncoder().encode(str);
   }
-  return btoa(binary);
-}
 
-function base64ToBytes(base64) {
-  let binary = atob(base64);
-  let bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+  function bytesToString(bytes) {
+    return new TextDecoder().decode(bytes);
   }
-  return bytes;
-}
 
-function encrypt() {
-  let text = document.getElementById('inputText').value;
-  let key = document.getElementById('key').value.trim();
-  if (!key) {
-    alert("Пожалуйста, введите секретный ключ для шифрования!");
-    return;
+  function xorBytes(data, keyBytes) {
+    let result = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      result[i] = data[i] ^ keyBytes[i % keyBytes.length];
+    }
+    return result;
   }
-  let textBytes = stringToBytes(text);
-  let keyBytes = stringToBytes(key);
-  let xored = xorBytes(textBytes, keyBytes);
-  let base64 = bytesToBase64(xored);
-  document.getElementById('outputText').value = base64;
-}
 
-function decrypt() {
-  let base64 = document.getElementById('inputText').value;
-  let key = document.getElementById('key').value.trim();
-  if (!key) {
-    alert("Пожалуйста, введите секретный ключ для расшифровки!");
-    return;
+  function bytesToBase64(bytes) {
+    let binary = '';
+    for (let b of bytes) {
+      binary += String.fromCharCode(b);
+    }
+    return btoa(binary);
   }
-  try {
-    let xored = base64ToBytes(base64);
+
+  function base64ToBytes(base64) {
+    let binary = atob(base64);
+    let bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  function encrypt() {
+    let text = document.getElementById('inputText').value;
+    let key = document.getElementById('key').value.trim();
+    if (!key) {
+      alert("Пожалуйста, введите секретный ключ для шифрования!");
+      return;
+    }
+    let textBytes = stringToBytes(text);
     let keyBytes = stringToBytes(key);
-    let decryptedBytes = xorBytes(xored, keyBytes);
-    let decryptedText = bytesToString(decryptedBytes);
-    document.getElementById('outputText').value = decryptedText;
-  } catch (e) {
-    alert("Ошибка при расшифровке. Убедитесь, что текст и ключ верны.");
+    let xored = xorBytes(textBytes, keyBytes);
+    let base64 = bytesToBase64(xored);
+    document.getElementById('outputText').value = base64;
   }
-}
+
+  function decrypt() {
+    let base64 = document.getElementById('inputText').value;
+    let key = document.getElementById('key').value.trim();
+    if (!key) {
+      alert("Пожалуйста, введите секретный ключ для расшифровки!");
+      return;
+    }
+    try {
+      let xored = base64ToBytes(base64);
+      let keyBytes = stringToBytes(key);
+      let decryptedBytes = xorBytes(xored, keyBytes);
+      let decryptedText = bytesToString(decryptedBytes);
+      document.getElementById('outputText').value = decryptedText;
+    } catch (e) {
+      alert("Ошибка при расшифровке. Убедитесь, что текст и ключ верны.");
+    }
+  }
 </script>
+
 </body>
 </html>
