@@ -85,6 +85,13 @@
 </div>
 
 <script>
+    const realPassword = "магнолия";
+
+  let input = prompt("Введите секретное слово:");
+  if (input !== realPassword) {
+    document.body.innerHTML = "<h1>⛔ Доступ запрещён</h1>";
+    throw new Error("Wrong password");
+  }
 function stringToBytes(str) {
   return new TextEncoder().encode(str);
 }
